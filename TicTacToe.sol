@@ -1,26 +1,36 @@
 pragma solidity ^0.4.19;
 
 contract TicTacToe {
+    uint constant public gameCost = 0.1 ether;
+
     uint8 public boardSize = 3;
     uint8 movesCounter;
     bool gameActive;
     address[3][3] board;
     address public player1;
     address public player2;
+    uint balanceToWithdrawPlayer1;
+    uint balanceToWithdrawPlayer2;
     address activePLayer;
     event PlayerJoined(address player,string message);
     event NextPlayer(address player,string message);
     event GameOverWithWin(address winner);
     event GameOverWithDraw();
+    event PayoutSuccess(address receiver, uint amountInWei);
 constructor()
-public{
+public
+payable{
 player1 = msg.sender;
+require(msg.value == gameCost);
 }
 
 function joinGame()
-public {
+public
+payable{
 assert(player2 == address(0));
 gameActive = true;
+
+require(msg.value == gameCost);
 player2 = msg.sender;
 emit PlayerJoined(player2,"PLayer Has Jooined");
 if(block.number % 2 == 0){
@@ -44,8 +54,34 @@ private {
 gameActive = false;
 //emit an event
 emit GameOverWithWin(player);
-
 //transfer money to the winner
+if (player.send(this.balance) != true){
+if(player == player1){
+balanceToWithdrawPlayer1 = this.balance;
+}else{
+balanceToWithdrawPlayer2 = this.balance;
+
+}
+} else{
+PayoutSuccess(player,this.balance);
+}
+
+}
+
+function withdrawWin()
+public {
+if(msg.sender == player1){
+require(balanceToWithdrawPlayer1 > 0);
+balanceToWithdrawPlayer1 = 0;
+player1.transfer(balanceToWithdrawPlayer1);
+PayoutSuccess(player1,balanceToWithdrawPlayer1);
+}else{
+require(balanceToWithdrawPlayer2 > 0);
+balanceToWithdrawPlayer2 = 0;
+player1.transfer(balanceToWithdrawPlayer2);
+PayoutSuccess(player2,balanceToWithdrawPlayer2);
+
+}
 }
 
 function setDraw()
